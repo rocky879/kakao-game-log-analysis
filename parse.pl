@@ -54,3 +54,4 @@ my $source = "/home/daumkakao/log/lighttpd/".$filename;
 my $dest = "/home/daumkakao/log/MidFiles/";
 
 &log2MidFile($source, $dest);
+&parse($dest.$filename);
