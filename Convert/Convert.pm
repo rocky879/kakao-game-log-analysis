@@ -4,8 +4,8 @@
 
 my $pwd = $ENV{'PWD'}; #当前路径
 
-require $pwd."/Convert/Common.pm";
-require $pwd."/Convert/Log.pm";
+require "/home/daumkakao/scripts/log/game/Convert/Common.pm";
+require "/home/daumkakao/scripts/log/game/Convert/Log.pm";
 
 use File::Basename qw<basename>;
 

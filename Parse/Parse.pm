@@ -20,7 +20,7 @@ sub getUserNumber { #获取某款游戏的用户数量, 参数为游戏client_id
         open(FILE, "<", $filename);
         my $total = 0;
         until(!($line=<FILE>)) {
-            my @array = split(/\t+/, $line);
+            my @array = split(/ +/, $line);
             if ($client_id eq @array[1]) { #第二项为ClientID
                 $total++;
             }
@@ -31,6 +31,48 @@ sub getUserNumber { #获取某款游戏的用户数量, 参数为游戏client_id
         print "file not exist!\n";
         return -1;
     }
+}
+
+sub getUserNumberByPlatform { #获取某款游戏在Android或IOS下的用户数量, 第一个参数为游戏client_id, 第二个参数为平台字串
+    my ($self, $client_id, $platform) = @_;
+    my $filename = $self->{'filename'};
+    if (-e $filename) {
+        open(FILE, "<", $filename);
+        my $total = 0;
+        until(!($line=<FILE>)) {
+            my @array = split(/ +/, $line);
+            if ($client_id eq @array[1]) { #第二项为ClientID
+                my $plat = @array[3]; #第四项为平台字串
+                if ("\L$platform\E" eq "\L$plat\E") { #转为小写字母后比较
+                    $total++;
+                }
+            }
+        }
+        close(FILE);
+        return $total;
+    } else {
+        print "file not exist!\n";
+        return -1;
+    }
+}
+
+sub getAllClientIds {
+    my ($self) = @_;
+    my $filename = $self->{'filename'};
+    my @result = ();
+    if (-e $filename) {
+        open(FILE, "<", $filename);
+        until(!($line=<FILE>)) {
+            my @array = split(/ +/g, $line);#print @array,"\n";
+            my $id = @array[1];
+            if (!grep /^$id$/, @result) {
+                push @result, $id;
+            }
+        }
+        close(FILE);
+    }
+
+    return @result;
 }
 
 #包内调用
@@ -76,35 +118,43 @@ sub getOperationInString { #解析操作字串,获取某操作的数量, 参数�
 
 #包内调用
 sub getOperationTotalInLine { #获取一行信息中操作总数
-    my ($line, $client_id) = @_;
+    my ($line, $client_id, $platform) = @_;
     #print $client_id,"\n";
-    my @array = split(/\t+/, $line);
+    my @array = split(/ +/, $line);
     if ($client_id eq @array[1]) { #第二项为ClientID
-        my $str_opr = @array[4]; #第五项为操作字串
-        my $num = &getOperationTotalInString($str_opr);
-        return $num;
-    } else {
-        return 0;
+        my $plat = @array[3]; #第四项为平台字串
+        if ("\L$platform\E" eq "\L$plat\E") { #转为小写字母后比较
+            my $str_opr = @array[4]; #第五项为操作字串
+            my $num = &getOperationTotalInString($str_opr);
+            return $num;
+        }
     }
+    return 0;
 }
 
 #包内调用
 sub getOperationInLine { #获取一行信息中某种操作的数量, 参数2为游戏client_id, 参数3为操作名称
-    my ($line, $client_id, $operation) = @_;
-    my @array = split(/\t+/, $line);
+    my ($line, $client_id, $operation, $platform) = @_;
+    my @array = split(/ +/, $line);
+    #print $line;
+    #print $platform,"\n";
+    #print $operation,"\n";
     if ($client_id eq @array[1]) { #第二项为ClientID
-        my $str_opr = @array[4]; #第五项为操作字串
-        my $num = &getOperationInString($str_opr, $operation);
-        return $num;
-    } else {
-        return 0;
+        my $plat = @array[3]; #第四项为平台字串
+        if ("\L$platform\E" eq "\L$plat\E") { #转为小写字母后比较
+            my $str_opr = @array[4]; #第五项为操作字串
+            my $num = &getOperationInString($str_opr, $operation);
+            #print $num,"\n";
+            return $num;
+        }
     }
+    return 0;
 }
 
 #包内调用
 sub getOperationTotalByUserInLine { #按用户获取一行信息中操作总数, 参数2为游戏client_id, 参数3为用户信息
     my ($line, $client_id, $user) = @_;
-    my @array = split(/\t+/, $line);
+    my @array = split(/ +/, $line);
     if ($client_id eq @array[1] && $user eq @array[0]) { #第二项为ClientID, 第一项为用户信息
         my $str_opr = @array[4]; #第五项为操作字串
         my $num = &getOperationTotalInString($str_opr);
@@ -117,7 +167,7 @@ sub getOperationTotalByUserInLine { #按用户获取一行信息中操作总数,
 #包内调用
 sub getOperationByUserInLine { #获取一行信息中某种操作的数量, 参数2为游戏client_id, 参数3为操作名称, 参数4为用户信息
     my ($line, $client_id, $operation, $user) = @_;
-    my @array = split(/\t+/, $line);
+    my @array = split(/ +/, $line);
     if ($client_id eq @array[1] && $user eq @array[0]) { #第二项为ClientID, 第一项为用户信息
         my $str_opr = @array[4]; #第五项为操作字串
         my $num = &getOperationInString($str_opr, $operation);
@@ -127,14 +177,14 @@ sub getOperationByUserInLine { #获取一行信息中某种操作的数量, 参�
     }
 }
 
-sub getOperationTotal { #获取某一游戏操作总数, 参数为游戏的client_id
-    my ($self, $client_id) = @_;
+sub getOperationTotal { #获取某一游戏在Android或IOS平台上的操作总数, 参数1为游戏的client_id, 参数2为平台字串
+    my ($self, $client_id, $platform) = @_;
     my $filename = $self->{'filename'};
     if (-e $filename) {
         my $total = 0;
         open(FILE, "<", $filename);
         until(!($line = <FILE>)) {
-            my $num = &getOperationTotalInLine($line, $client_id);
+            my $num = &getOperationTotalInLine($line, $client_id, $platform);
             $total += $num;
         }
         close(FILE);
@@ -144,17 +194,23 @@ sub getOperationTotal { #获取某一游戏操作总数, 参数为游戏的clien
     }
 }
 
-sub getOperationNumber { #获取某一游戏某个操作的数量, 参数1为游戏的client_id, 参数2为操作名称
-    my ($self, $client_id, $operation) = @_;
+sub getOperationNumber { #获取某一游戏在Android或IOS平台上某个操作的数量, 参数1为游戏的client_id, 参数2为操作名称, 参数3为平台字串
+    my ($self, $client_id, $operation, $platform) = @_; #print $platform,"\n";
+
+    #print $line;
+    #print $platform,"\n";
+    #print $operation,"\n";
+
     my $filename = $self->{'filename'};
     if (-e $filename) {
         my $total = 0;
         open(FILE, "<", $filename);
         until(!($line=<FILE>)) {
-            my $num = &getOperationInLine($line, $client_id, $operation);
+            my $num = &getOperationInLine($line, $client_id, $operation, $platform);
             $total += $num;
         }
         close(FILE);
+        #print $total,"\n";
         return $total;
     } else {
         return -1;
