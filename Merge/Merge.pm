@@ -4,8 +4,8 @@
 
 my $pwd = $ENV{'PWD'}; #当前路径
 
-require $pwd."/Merge/Parse.pm";
-require $pwd."/Merge/MergeBase.pm";
+require "/home/daumkakao/scripts/log/game/Merge/Parse.pm";
+require "/home/daumkakao/scripts/log/game/Merge/MergeBase.pm";
 
 use File::Basename qw<dirname>;
 use File::Path qw(mkpath);
