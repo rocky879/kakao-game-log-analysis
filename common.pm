@@ -14,13 +14,18 @@ sub getDateFromFileName {
 }
 
 sub db_getAllPlatforms {
-    my $db = Database->new("172.28.3.13", "statistics", "postgres", "asdf1234");
-    $db->query("SELECT * FROM slog_platform");
+    #print "start\n";
+    my $db = Database->new("dsymaster.pg.rds.aliyuncs.com:3433", "statistics", "wuyou", "wuyou_123");
+    #print "initend\n";
+    my @result = $db->query("SELECT * FROM slog_platform");
+    #print @result,"\n";
+    return @result;
 }
 
 sub db_getAllStates {
-    my $db = Database->new("172.28.3.13", "statistics", "postgres", "asdf1234");
-    $db->query("SELECT * FROM slog_state");
+    my $db = Database->new("dsymaster.pg.rds.aliyuncs.com:3433", "statistics", "wuyou", "wuyou_123");
+    my @result = $db->query("SELECT * FROM slog_state");
+    return @result;
 }
 
 1;
