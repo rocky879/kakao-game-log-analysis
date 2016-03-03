@@ -3,6 +3,7 @@
 #分析中间文件, 从中取得所需值
 
 package Parse;
+use URI::Escape;
 
 sub new { #构造参数唯一参数为中间文件名称(或全路径)
     my $class = shift();
@@ -112,7 +113,10 @@ sub getOperationInString { #解析操作字串,获取某操作的数量, 参数�
     my $total = 0;
     foreach $kv (@array) {
         my $key = &getKeyInKvPair($kv);
-        if ($key eq $operation) {
+		$key = lc(uri_unescape($key)); #url解码并转为小写
+		my @tmp = split(/\|+/, $key); #认为|后为参数
+		$key = @tmp[0]; #只取|前内容
+        if ($key eq lc($operation)) {
             my $num = &getValueInKvPair($kv);
             $total += $num;
         }

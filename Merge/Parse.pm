@@ -5,6 +5,7 @@
 #4921EA5C78F2483BB041AA8A411AE701	201505002	114.82.174.160	iOS	destroy=1&init=1
 
 #package Parse;
+use URI::Escape;
 
 sub midParse { #解析中间文件, 参数为中间文件全路径(包含文件名)
     my ($filename) = @_;
@@ -37,7 +38,14 @@ sub midParse { #解析中间文件, 参数为中间文件全路径(包含文件�
                 @array = split(/&+/, $states); #多个状态以&分隔
                 foreach my $sts (@array) {
                     my @arr = split(/=+/, $sts); #每个状态字串格式为key=value
-                    $result{$key}{'state'}{@arr[0]} = @arr[1];
+		    		my $k = uri_unescape(@arr[0]);
+		    		my @tmp = split(/\|+/, $k);
+		    		$k = @tmp[0]; #print $k,"\n";
+		    		if (exists $result{$key}{'state'}{$k}) {
+						$result{$key}{'state'}{$k} += @arr[1];
+		    		} else {
+                        $result{$key}{'state'}{$k} = @arr[1];
+		    		}
                 }
             }
         }
