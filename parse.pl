@@ -8,6 +8,8 @@ require "/home/daumkakao/scripts/log/game/common.pm";
 require "/home/daumkakao/scripts/log/game/Parse/Parse.pm";
 require "/home/daumkakao/scripts/log/game/Merge/Parse.pm";
 
+my $db = Database->new("dsymaster.pg.rds.aliyuncs.com:3433", "statistics", "wuyou", "wuyou_123");
+
 sub log2MidFile {
     my ($src, $dst) = @_;
     &convert($src, $dst);
@@ -21,9 +23,9 @@ sub parse1 {
         my $p = Parse->new($filename);
         my @CIds = $p->getAllClientIds(); #print join("::",@CIds),"\n";
         my @Plats = &db_getAllPlatforms(); #print @Plats,"\n";
-		#return;
+	#return;
         my @Stses = &db_getAllStates(); #print @Stses,"\n";
-        my $db = Database->new("dsymaster.pg.rds.aliyuncs.com:3433", "statistics", "wuyou", "wuyou_123");
+        #my $db = Database->new("dsymaster.pg.rds.aliyuncs.com:3433", "statistics", "wuyou", "wuyou_123");
         foreach my $cid (@CIds) {
             foreach my $plat (@Plats) {
                 my %plat = %{$plat};
@@ -74,6 +76,41 @@ sub parse1 {
      }
 }
 
+sub summary {
+    my ($filename) = @_;
+    my $date = &getDateFromFileName($filename);
+    my $p = Parse->new($filename); #print $filename,"\n";
+    my @CIds = $p->getAllClientIds();
+    my @Plats = &db_getAllPlatforms();
+    foreach my $cid (@CIds) {
+	foreach my $plat (@Plats) {
+	    my %plat = %{$plat};
+	    my $pname = $plat{'pname'};
+	    my $init_count = &db_getStateCount($date, $cid, $pname, 'init');
+	    my $enter_rate = 0;
+	    my $login_count = &db_getStateCount($date, $cid, $pname, 'login');
+	    if ($login_count != 0 && $init_count != 0) {
+	        $enter_rate = sprintf("%.4f", $login_count/$init_count);
+	    }
+	    my $pay_rate = 0;
+	    my $pay_count = &db_getStateCount($date, $cid, $pname, 'pay');
+	    my $prepare_count = &db_getStateCount($date, $cid, $pname, 'pay_prepare');
+	    if ($pay_count != 0 && $prepare_count != 0) {
+		$pay_rate = sprintf("%.4f", $pay_count/$prepare_count);
+	    }
+	    #print $cid,"\t",$pname,"\t",$init_count,"\n";
+	    #print $cid,"\n";
+	    if ($init_count != 0 || $enter_rate != 0 || $pay_rate != 0) {
+	        my $sql = "INSERT INTO slog_result(date,appid,platform,open_count,enter_rate,pay_rate) VALUES('".$date."','".$cid."','".lc($pname)."',";
+	        $sql .= $init_count.",".$enter_rate.",".$pay_rate.")";
+	        $db->execute($sql);
+	    }
+	}
+    }
+    #my $count = &db_getStateCount('20160303', '201505002', 'ios', 'init');
+    #print $count,"\n";
+}
+
 my $str_yesterday = strftime("%Y%m%d", localtime(time-86400)); #Yesterday
 my $filename = "statistics.log.".$str_yesterday;
 my $source = "/home/daumkakao/log/lighttpd/".$filename;
@@ -84,3 +121,5 @@ my $dest = "/home/daumkakao/log/MidFiles/";
 #print strftime("%H:%M:%S", localtime()),"\n";
 &parse1($dest.$filename);
 #print strftime("%H:%M:%S", localtime()),"\n";
+&summary($dest.$filename);
+#&db_getStateCount('20160303','201505001','ios','init');
