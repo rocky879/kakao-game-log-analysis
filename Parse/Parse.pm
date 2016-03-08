@@ -57,6 +57,31 @@ sub getUserNumberByPlatform { #获取某款游戏在Android或IOS下的用户数
     }
 }
 
+sub getAllUsersByPlatform { #获取某款游戏在Android或IOS下的所有用户, 第一个参数为游戏client_id, 第二个参数为平台字串
+    my ($self, $client_id, $platform) = @_;
+    my $filename = $self->{'filename'};
+    my @users = ();
+    if (-e $filename) {
+        open(FILE, "<", $filename);
+        my $total = 0;
+        until(!($line=<FILE>)) {
+            my @array = split(/\t+/, $line);
+            if ($client_id eq @array[1]) { #第二项为ClientID
+                my $plat = @array[3]; #第四项为平台字串
+                if ("\L$platform\E" eq "\L$plat\E") { #转为小写字母后比较
+                    $u = @array[0];
+		    push @users, $u;
+                }
+            }
+        }
+        close(FILE);
+    } else {
+        print "file not exist!\n";
+    }
+
+    return @users;
+}
+
 sub getAllClientIds {
     my ($self) = @_;
     my $filename = $self->{'filename'};

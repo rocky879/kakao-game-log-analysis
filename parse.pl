@@ -15,6 +15,114 @@ sub log2MidFile {
     &convert($src, $dst);
 }
 
+sub pre_parse {
+    my ($pre_file, $filename) = @_;
+    my $date = &getDateFromFileName($filename);
+    if (str2time($date)) {
+	if (!-e $pre_file) {
+	    return;
+	}
+
+	my $prep = Parse->new($pre_file);
+	my $p = Parse->new($filename);
+	my @CIds = $p->getAllClientIds();
+	my @Plats = &db_getAllPlatforms();
+	foreach my $cid (@CIds) {
+	    foreach my $plat (@Plats) {
+		my %plat = %{$plat};
+		my $pid = $plat{'pid'};
+		my $pname = $plat{'pname'};
+		my @users_now = $p->getAllUsersByPlatform($cid, $pname);
+		my @users_pre = $prep->getAllUsersByPlatform($cid, $pname);
+		my $num_new = 0;
+		my $num_old = 0;
+		foreach my $u (@users_now) {
+		    if (grep /^$u$/, @users_pre) {
+			$num_old++;
+		    } else {
+			$num_new++;
+		    }
+		}
+		my $sql = "UPDATE slog_summary SET old_pre_1=".$num_old.",new_pre_1=".$num_new." WHERE date='".$date."' AND appid='".$cid."' AND platform='".lc($pname)."'";
+		$db->execute($sql);
+	    }
+	}
+    }
+}
+
+sub cont_parse {
+    my ($files, $filename) = @_;
+    my @files = @{$files};
+    my $count = @files; print $count,"\n";
+
+    my $col = "";    
+    if ($count == 2) {
+	$col = "num_cont_3";
+    } elsif ($count == 6) {
+	$col = "num_cont_7";
+    } else {
+        return;
+    }
+
+    my $date = &getDateFromFileName($filename);
+    if (str2time($date)) {
+        my $p = Parse->new($filename);
+        my @CIds = $p->getAllClientIds();
+        my @Plats = &db_getAllPlatforms();
+        foreach my $cid (@CIds) {
+            foreach my $plat (@Plats) {
+                my %plat = %{$plat};
+                my $pid = $plat{'pid'};
+                my $pname = $plat{'pname'};
+                my @users_now = $p->getAllUsersByPlatform($cid, $pname);
+
+                my $result = 0;
+                foreach my $u (@users_now) {
+		    my $num = 0;
+                    foreach my $f (@files) {
+			if (!-e $f) {
+			    return; #只要有一个文件不存在即返回，不再往下执行
+			}
+                        #my $pre = Parse->new($f);
+                        #my @pusers = $pre->getAllUsersByPlatform($cid, $pname);
+			
+                        #if (grep /^$u$/, @pusers) {
+                        #    $num++;
+                        #} else {
+			#    last;
+			#}
+
+			open(FILE, $f);
+			until (!(my $line=<FILE>)) {
+			    if ($line =~ /^$u/g) {
+				my @tmps = split(/\t+/, $line);
+				my $len = @tmp;
+				if ($len != 5) {
+				    next;
+				}
+				if (@tmps[1] eq $cid && lc(@tmps[3]) eq lc($pname)) {
+				    $num++;
+				    last;
+				}
+			   }
+			}
+			close(FILE);
+			
+			#if(&db_HasUser($date, $cid, $platform, $u)) {
+			#    $num++;
+			#}
+                    }
+		    if ($num >= $count) {
+			$result++;
+		    }
+                }
+                my $sql = "UPDATE slog_summary SET ".$col."=".$result." WHERE date='".$date."' AND appid='".$cid."' AND platform='".lc($pname)."'";
+                $db->execute($sql);
+            }
+        }
+    }
+}
+
 sub parse1 {
     my ($filename) = @_;
     #print $filename,"\n";
@@ -113,8 +221,23 @@ sub summary {
 
 my $str_yesterday = strftime("%Y%m%d", localtime(time-86400)); #Yesterday
 my $filename = "statistics.log.".$str_yesterday;
+my $str_yesterday_before = strftime("%Y%m%d", localtime(time-86400*2)); #The day before yesterday
+my $pre_file = "statistics.log.".$str_yesterday_before;
 my $source = "/home/daumkakao/log/lighttpd/".$filename;
 my $dest = "/home/daumkakao/log/MidFiles/";
+
+my @_3days_files = ();
+my @_7days_files = ();
+for ($i=0; $i<2; $i++) {
+    my $name = "statistics.log.".strftime("%Y%m%d", localtime(time-86400*($i+2)));
+    push @_3days_files, ($dest.$name);
+}
+for ($i=0; $i<6; $i++) {
+    my $name = "statistics.log.".strftime("%Y%m%d", localtime(time-86400*($i+2)));
+    push @_7days_files, ($dest.$name);
+}
+#print join("\n", @_3days_files),"\n\n";
+#print join("\n", @_7days_files),"\n";
 
 #print "out\n";
 &log2MidFile($source, $dest);
@@ -123,3 +246,8 @@ my $dest = "/home/daumkakao/log/MidFiles/";
 #print strftime("%H:%M:%S", localtime()),"\n";
 &summary($dest.$filename);
 #&db_getStateCount('20160303','201505001','ios','init');
+&pre_parse($dest.$pre_file, $dest.$filename);
+#cont_parse(\@_3days_files, $dest.$filename);
+#print strftime("%H:%M:%S", localtime()),"\n";
+#cont_parse(\@_7days_files, $dest.$filename);
+#print strftime("%H:%M:%S", localtime()),"\n";

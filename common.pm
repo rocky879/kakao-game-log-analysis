@@ -49,4 +49,21 @@ sub db_getStateCount {
     return $result;
 }
 
+sub db_HasUser {
+    my ($date, $cid, $platform, $devid) = @_;
+    my $sql = "SELECT COUNT(*) count FROM slog_state_user WHERE date='".$date."' AND appid='".$cid."' AND platform='".lc($platform)."' AND devid='".$devid."'";
+    my @result = $db->query($sql);
+    my $count = @result;
+    if ($count > 0) {
+	my %hash = %{@result[0]};
+	if (exists $hash{'count'}) {
+	    if ($hash{'count'} ne "0") {
+		return true;
+	    }
+	}
+    }
+
+    return false;
+}
+
 1;
