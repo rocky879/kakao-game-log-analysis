@@ -219,6 +219,66 @@ sub summary {
     #print $count,"\n";
 }
 
+sub parse_pre {
+    my ($filename) = @_;
+    my $date = &getDateFromFileName($filename); #print $date,"\n";
+    my $date_before = strftime("%Y%m%d", localtime(str2time($date)-86400)); #print $date_before,"\n";
+
+	my $p = Parse->new($filename);
+	my @CIds = $p->getAllClientIds();
+	my @Plats = &db_getAllPlatforms();
+	foreach my $cid (@CIds) {
+	    foreach my $plat (@Plats) {
+	        my %plat = %{$plat};
+	        my $pname = $plat{'pname'};
+	        my $format = "SELECT DISTINCT devid FROM slog_state_user WHERE date='%s' AND appid='%s' AND platform='%s'";
+	        my $sql1 = sprintf($format, $date, $cid, lc($pname));
+	        my $sql2 = sprintf($format, $date_before, $cid, lc($pname));
+	        my $sql = "SELECT COUNT(*) count FROM (".$sql1.") a INNER JOIN (".$sql2.") b ON a.devid=b.devid";
+	        my @res = $db->query($sql);
+	        my %hash = %{@res[0]};
+	        #print $hash{'count'},"\n";
+	        my $count = $hash{'count'};
+
+	        $format = "UPDATE slog_summary SET old_pre_1=%d,new_pre_1=usrtotal-%d WHERE date='%s' AND appid='%s' AND platform='%s'";
+	        $sql = sprintf($format, $count, $count, $date, $cid, lc($pname));
+	        #print $sql,"\n";
+	        $db->execute($sql);
+	    }
+	}
+}
+
+sub parse_cont_3 {
+    my ($filename) = @_;
+    my $date = &getDateFromFileName($filename); #print $date,"\n";
+    my $date_before1 = strftime("%Y%m%d", localtime(str2time($date)-86400)); #print $date_before,"\n";
+    my $date_before2 = strftime("%Y%m%d", localtime(str2time($date)-86400*2)); #print $date_before,"\n";
+
+	my $p = Parse->new($filename);
+	my @CIds = $p->getAllClientIds();
+	my @Plats = &db_getAllPlatforms();
+	foreach my $cid (@CIds) {
+	    foreach my $plat (@Plats) {
+	        my %plat = %{$plat};
+	        my $pname = $plat{'pname'};
+	        my $format = "SELECT DISTINCT devid FROM slog_state_user WHERE date='%s' AND appid='%s' AND platform='%s'";
+	        my $sql1 = sprintf($format, $date, $cid, lc($pname));
+	        my $sql2 = sprintf($format, $date_before1, $cid, lc($pname));
+	        my $sql3 = sprintf($format, $date_before2, $cid, lc($pname));
+	        my $sql = "SELECT COUNT(*) count FROM ((".$sql1.") a INNER JOIN (".$sql2.") b ON a.devid=b.devid) INNER JOIN (".$sql3.") c ON a.devid=c.devid";
+	        my @res = $db->query($sql);
+	        my %hash = %{@res[0]};
+	        #print $hash{'count'},"\n";
+	        my $count = $hash{'count'};
+
+	        $format = "UPDATE slog_summary SET num_cont_3=%d WHERE date='%s' AND appid='%s' AND platform='%s'";
+	        $sql = sprintf($format, $count, $date, $cid, lc($pname));
+	        #print $sql,"\n";
+	        $db->execute($sql);
+	    }
+	}
+}
+
 my $str_yesterday = strftime("%Y%m%d", localtime(time-86400)); #Yesterday
 my $filename = "statistics.log.".$str_yesterday;
 my $str_yesterday_before = strftime("%Y%m%d", localtime(time-86400*2)); #The day before yesterday
@@ -245,8 +305,10 @@ for ($i=0; $i<6; $i++) {
 &parse1($dest.$filename);
 #print strftime("%H:%M:%S", localtime()),"\n";
 &summary($dest.$filename);
+&parse_pre($dest.$filename);
+&parse_cont_3($dest.$filename);
 #&db_getStateCount('20160303','201505001','ios','init');
-&pre_parse($dest.$pre_file, $dest.$filename);
+#&pre_parse($dest.$pre_file, $dest.$filename);
 #cont_parse(\@_3days_files, $dest.$filename);
 #print strftime("%H:%M:%S", localtime()),"\n";
 #cont_parse(\@_7days_files, $dest.$filename);
